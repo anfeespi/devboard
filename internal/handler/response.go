@@ -86,8 +86,8 @@ func RespondValidationError(writer http.ResponseWriter, errs []validator.Validat
 	})
 }
 
-// ResponseJSON send a response in JSON
-func ResponseJSON(writer http.ResponseWriter, status int, data any) error {
+// RespondJSON send a response in JSON
+func RespondJSON(writer http.ResponseWriter, status int, data any) error {
 	return respondJSON(writer, status, data)
 }
 

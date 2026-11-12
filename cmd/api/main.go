@@ -3,6 +3,7 @@ package main
 
 import (
 	"log/slog"
+	"net/http"
 	"os"
 	"time"
 
@@ -11,7 +12,9 @@ import (
 	"github.com/anfeespi/devboard/internal/logger"
 	"github.com/anfeespi/devboard/internal/middlewares"
 	"github.com/anfeespi/devboard/internal/notification"
+	"github.com/anfeespi/devboard/internal/repository/memory"
 	"github.com/anfeespi/devboard/internal/server"
+	"github.com/anfeespi/devboard/internal/usecase"
 	"github.com/anfeespi/devboard/internal/validator"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
@@ -25,37 +28,40 @@ const PORT = ":8080"
 // @host localhost:8080
 // @BasePath /api/v1
 func main() {
-	// 1. Config of the environment
-	env := os.Getenv("GO_ENV")
-	slog.Info("env charged", "GO_ENV", env)
-
+	// 1. Environment configuration
 	// 2. Logger
-	var log *slog.Logger
-	if env == "production" {
-		log = logger.New(logger.ProductionConfig())
-	} else {
-		log = logger.New(logger.DefaultConfig())
-	}
+	log := setupLogger()
 
 	// 3. Shared dependencies
+
+	// Infrastructure: adapters
+	userRepo := memory.NewUserRepository()
+
+	// Use cases: business logic
+	userUC := usecase.NewUserUseCase(userRepo)
+
+	// Shared validation
 	validate := validator.New()
-	_ = validate
+
+	// 4. Handlers
+	healthHandler := handler.NewHealthHandler()
+	userHandler := handler.NewUserHandler(userUC, validate, log)
+
 	notifier := notification.NewLogNotifier(log)
 	_ = notifier
 
-	// 4. Server with Functional Options
+	// 5. Server with Functional Options
 	srv := server.New(PORT,
 		server.WithLogger(log),
 		server.WithReadTimeout(15*time.Second),
 		server.WithWriteTimeout(40*time.Second),
 	)
 
-	// 5. Handlers
-	healthHandler := handler.NewHealthHandler()
-
 	// 6. Register routes
 	srv.RegisterRoutes("GET /docs/", httpSwagger.WrapHandler)
 	srv.RegisterRoutes("GET /health", healthHandler)
+	srv.RegisterRoutes("POST /api/v1/users", http.HandlerFunc(userHandler.Create))
+	srv.RegisterRoutes("GET /api/v1/users/{id}", http.HandlerFunc(userHandler.Get))
 
 	// 7. Middleware chain
 	srv.UseChain(
@@ -69,4 +75,12 @@ func main() {
 		os.Exit(1)
 	}
 
+}
+
+func setupLogger() *slog.Logger {
+	if os.Getenv("GO_ENV") == "production" {
+		return logger.New(logger.ProductionConfig())
+	}
+
+	return logger.New(logger.DefaultConfig())
 }
