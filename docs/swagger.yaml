@@ -1,5 +1,26 @@
 basePath: /api/v1
 definitions:
+  domain.TaskStatus:
+    enum:
+    - todo
+    - in_progress
+    - done
+    type: string
+    x-enum-varnames:
+    - TaskStatusTodo
+    - TaskStatusInProgress
+    - TaskStatusDone
+  handler.PaginatedResponse-handler_taskResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/handler.taskResponse'
+        type: array
+      has_more:
+        type: boolean
+      next_cursor:
+        type: string
+    type: object
   handler.ProblemDetails:
     properties:
       detail:
@@ -16,6 +37,28 @@ definitions:
         type: string
       type:
         type: string
+    type: object
+  handler.assignTaskRequest:
+    properties:
+      assignee_id:
+        type: string
+    required:
+    - assignee_id
+    type: object
+  handler.createTaskRequest:
+    properties:
+      description:
+        maxLength: 2000
+        type: string
+      project_id:
+        type: string
+      title:
+        maxLength: 200
+        minLength: 3
+        type: string
+    required:
+    - project_id
+    - title
     type: object
   handler.createUserRequest:
     properties:
@@ -39,6 +82,34 @@ definitions:
         type: string
       version:
         type: string
+    type: object
+  handler.taskResponse:
+    properties:
+      assignee_id:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      project_id:
+        type: string
+      status:
+        $ref: '#/definitions/domain.TaskStatus'
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handler.updateStatusRequest:
+    properties:
+      status:
+        $ref: '#/definitions/domain.TaskStatus'
+    required:
+    - status
     type: object
   handler.userResponse:
     properties:
@@ -75,6 +146,140 @@ paths:
           schema:
             $ref: '#/definitions/handler.healthResponse'
       summary: Health check
+  /projects/{id}/tasks:
+    get:
+      description: Get all the tasks based on its project
+      parameters:
+      - description: project id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.PaginatedResponse-handler_taskResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ProblemDetails'
+      summary: Get tasks by project
+      tags:
+      - tasks
+  /tasks:
+    post:
+      consumes:
+      - application/json
+      description: Register a new task in the system
+      parameters:
+      - description: Task data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.createTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handler.taskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ProblemDetails'
+      summary: Create task
+      tags:
+      - tasks
+  /tasks/{id}:
+    get:
+      description: Get a task using its id
+      parameters:
+      - description: task id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.taskResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ProblemDetails'
+      summary: Get task by id
+      tags:
+      - tasks
+  /tasks/{id}/assignee:
+    put:
+      consumes:
+      - application/json
+      description: Assign a task to a user
+      parameters:
+      - description: Task id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: assignee id
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.assignTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.taskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ProblemDetails'
+      summary: assign task to user
+      tags:
+      - tasks
+  /tasks/{id}/status:
+    put:
+      consumes:
+      - application/json
+      description: Move the task status to a new one
+      parameters:
+      - description: Task id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: new status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.updateStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.taskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ProblemDetails'
+      summary: update task status
+      tags:
+      - tasks
   /users:
     post:
       consumes:
