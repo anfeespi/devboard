@@ -22,6 +22,10 @@ test:
 lint:
 	golangci-lint run ./...
 
+## migrate-create: crea una nueva migración
+migrate-create:
+	migrate create -ext sql -dir $(MIGRATE_PATH) -seq $(name)
+
 ## migrate-up: aplicar todas las migraciones pendientes
 migrate-up:
 	migrate -path $(MIGRATE_PATH) -database "$(DB_URL)" up
@@ -32,6 +36,7 @@ migrate-down:
 
 ## generate: correr go generate en todo el proyecto
 generate:
+	sqlc generate
 	go generate ./...
 
 ## tidy: limpiar y verificar dependencias
