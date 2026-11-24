@@ -144,7 +144,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/tasks/{id}/assignee": {
+        "/tasks/{id}/assign": {
             "put": {
                 "description": "Assign a task to a user",
                 "consumes": [

@@ -2,17 +2,19 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
 	_ "github.com/anfeespi/devboard/docs"
+	"github.com/anfeespi/devboard/internal/cache"
 	"github.com/anfeespi/devboard/internal/handler"
 	"github.com/anfeespi/devboard/internal/logger"
 	"github.com/anfeespi/devboard/internal/middlewares"
 	"github.com/anfeespi/devboard/internal/notification"
-	"github.com/anfeespi/devboard/internal/repository/memory"
+	pgrepo "github.com/anfeespi/devboard/internal/repository/postgres"
 	"github.com/anfeespi/devboard/internal/server"
 	"github.com/anfeespi/devboard/internal/usecase"
 	"github.com/anfeespi/devboard/internal/validator"
@@ -32,11 +34,51 @@ func main() {
 	// 2. Logger
 	log := setupLogger()
 
+	dbURL := os.Getenv("DATABASE_URL")
+	redisAddr := os.Getenv("REDIS_ADDR")
+
+	// Create connection pool
+	pool, err := pgrepo.NewPool(context.Background(), pgrepo.Config{
+		URL:             dbURL,
+		MaxConns:        25,
+		MinConns:        5,
+		MaxConnLifetime: 1 * time.Hour,
+		MaxConnIdleTime: 30 * time.Minute,
+	})
+	if err != nil {
+		log.Error("cannot connect to the bd", slog.Any("error", err))
+		os.Exit(1)
+	}
+
+	defer pool.Close()
+
+	log.Info("connected to the db!")
+
+	redisClient, err := cache.NewClient(context.Background(), cache.Config{
+		Addr:    redisAddr,
+		Timeout: 5 * time.Second,
+	})
+	if err != nil {
+		log.Error("cannot connect to redus", slog.Any("error", err))
+		os.Exit(1)
+	}
+
+	defer func() {
+		if err := redisClient.Close(); err != nil {
+			log.Error(
+				"cannot close the connection to redis",
+				slog.Any("error", err),
+			)
+		}
+	}()
+
+	log.Info("connected to Redis!")
+
 	// 3. Shared dependencies
 
 	// Infrastructure: adapters
-	userRepo := memory.NewUserRepository()
-	taskRepo := memory.NewTaskRepository()
+	userRepo := pgrepo.NewUserRepository(pool)
+	taskRepo := pgrepo.NewTaskRepository(pool)
 
 	// Use cases: business logic
 	userUC := usecase.NewUserUseCase(userRepo)

@@ -102,7 +102,7 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.usecase.CreateTask(r.Context(), req.ProjectID, req.Title, req.Description, "system")
+	task, err := h.usecase.CreateTask(r.Context(), req.ProjectID, req.Title, req.Description, "af0e316f-9752-48db-a528-4664cc9200b2")
 	if err != nil {
 		RespondError(w, r, h.logger, err)
 		return
@@ -231,7 +231,7 @@ func (h *TaskHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 // @Param request body assignTaskRequest true "assignee id"
 // @Success 200 {object} taskResponse
 // @Failure 400 {object} ProblemDetails
-// @Router /tasks/{id}/assignee [put]
+// @Router /tasks/{id}/assign [put]
 func (h *TaskHandler) Assign(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
