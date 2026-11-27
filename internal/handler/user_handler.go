@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/anfeespi/devboard/internal/auth"
 	"github.com/anfeespi/devboard/internal/domain"
 	"github.com/anfeespi/devboard/internal/usecase"
 	"github.com/anfeespi/devboard/internal/validator"
@@ -63,13 +64,16 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// temporal
-	passwordHash := "TEMPORAL_" + req.Password
+	passwordHash, err := auth.HashPassword(req.Password)
+	if err != nil {
+		RespondError(w, r, h.logger, domain.ErrInternal)
+		return
+	}
 
 	user, err := h.usecase.CreateUser(r.Context(), req.Email, req.Name, passwordHash)
-
 	if err != nil {
 		RespondError(w, r, h.logger, err)
+		return
 	}
 
 	if err := RespondJSON(w, http.StatusCreated, userResponse{
