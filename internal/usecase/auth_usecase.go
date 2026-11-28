@@ -141,7 +141,7 @@ func (uc *AuthUseCase) RefreshTokens(ctx context.Context, refreshToken string) (
 		return nil, fmt.Errorf("revoking token: %w", err)
 	}
 
-	tokens, err := uc.generateTokenPair(ctx, claims.UserID, claims.Email, "member")
+	tokens, err := uc.generateTokenPair(ctx, claims.UserID, claims.Email, claims.Role)
 	if err != nil {
 		return nil, err
 	}
